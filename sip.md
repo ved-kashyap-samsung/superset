@@ -1,4 +1,4 @@
-## [SIP] Proposal for natural language query to SQL conversion and summarize SQL returned data using LLM 
+## [SIP] Proposal for natural language query to SQL conversion and data summarization using LLM 
 
 ### Motivation
 
