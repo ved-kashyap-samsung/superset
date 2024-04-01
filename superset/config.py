@@ -483,6 +483,8 @@ DEFAULT_FEATURE_FLAGS: dict[str, bool] = {
     "PLAYWRIGHT_REPORTS_AND_THUMBNAILS": False,
     # Set to True to enable experimental chart plugins
     "CHART_PLUGINS_EXPERIMENTAL": False,
+    # LLM flag
+    "SUPERSET_LLM_ENABLE": True,
 }
 
 # ------------------------------
@@ -877,6 +879,9 @@ SQL_MAX_ROW = 100000
 # Is set to avoid out of memory/localstorage issues in browsers. Does not affect
 # exported CSVs
 DISPLAY_MAX_ROW = 10000
+
+# LLM URLS
+NL_TO_SQL_Endpoint = "http://107.99.237.104:8081/generate"
 
 # Default row limit for SQL Lab queries. Is overridden by setting a new limit in
 # the SQL Lab UI
