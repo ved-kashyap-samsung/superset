@@ -46,6 +46,7 @@ import type {
   QueryEditor,
   SqlLabRootState,
   CursorPosition,
+  Table,
 } from 'src/SqlLab/types';
 import type { DatabaseObject } from 'src/features/databases/types';
 import { debounce, throttle, isBoolean, isEmpty } from 'lodash';
@@ -78,6 +79,7 @@ import {
   updateSavedQuery,
   formatQuery,
   switchQueryEditor,
+  nl_to_sql,
 } from 'src/SqlLab/actions/sqlLab';
 import {
   STATE_TYPE_MAP,
@@ -244,6 +246,7 @@ const SqlEditor: React.FC<Props> = ({
 }) => {
   const theme = useTheme();
   const dispatch = useDispatch();
+  const enable_sql_llm = isFeatureEnabled(FeatureFlag.Superset_llm_enable)
 
   const { database, latestQuery, hideLeftBar, currentQueryEditorId } =
     useSelector<
@@ -298,6 +301,8 @@ const SqlEditor: React.FC<Props> = ({
       if (!database) {
         return;
       }
+      var nltext = ''
+      if(enable_sql_llm) nltext = (document.getElementById("nlsql") as HTMLInputElement).value
 
       dispatch(
         runQueryFromSqlEditor(
@@ -307,6 +312,7 @@ const SqlEditor: React.FC<Props> = ({
           ctasArg ? ctas : '',
           ctasArg,
           ctas_method,
+          nltext,
         ),
       );
       dispatch(setActiveSouthPaneTab('Results'));
@@ -780,6 +786,55 @@ const SqlEditor: React.FC<Props> = ({
   const queryPane = () => {
     const { aceEditorHeight, southPaneHeight } =
       getAceEditorAndSouthPaneHeights(height, northPercent, southPercent);
+    
+    const tables = useSelector<SqlLabRootState, Table[]>(
+      ({ sqlLab }) =>
+        sqlLab.tables.filter(table => table.queryEditorId === queryEditor.id),
+      shallowEqual,
+    );
+    
+    const update_sql_by_nl = async () => {
+
+      const inputElement = document.getElementById("nlsql") as HTMLInputElement;
+
+      let columns = []
+      let table_names = []
+      console.log(tables)
+      for(let i=0; i<tables.length; i++){
+        if(tables[i]['persistData']!==null && tables[i]['persistData']['columns']!==null){
+          columns.push(tables[i]['persistData']['columns'])
+          table_names.push(tables[i]['name'])
+        }
+      }
+
+      var names = []
+      var types = []
+
+      for(let i=0; i<columns.length; i++){
+        let name = []
+        let type = []
+        for(let j=0; j<columns[i].length; j++){
+          name.push(columns[i][j]['name'])
+          type.push(columns[i][j]['type'])
+        }
+        names.push(name)
+        types.push(type)
+      }
+      // let columns
+      // if(tables[0]!=null && tables[0]['persistData']!==null && tables[0]['persistData']['columns']!==null){
+      //   columns = tables[0]['persistData']['columns']
+      // }
+      // var names = []
+      // var types = []
+      // for(let i=0; i<columns.length; i++){
+      //   names.push(columns[i]['name'])
+      //   types.push(columns[i]['type'])
+      // }
+
+      const sql_value = await nl_to_sql(inputElement.value, table_names, names, types)
+      onSqlChanged(sql_value)
+    }
+
     return (
       <Split
         expandToMin
@@ -802,6 +857,26 @@ const SqlEditor: React.FC<Props> = ({
               startQuery={startQuery}
             />
           )}
+
+          {enable_sql_llm && (
+            <div>
+              <input id="nlsql" style={{
+                width: '80%',
+                height: '38px',
+                border: 'solid 1px',
+                borderRadius: '3px',
+                borderColor: 'grey',
+                marginRight: '2%',
+                marginBottom: '10px',
+                padding: '10px'
+                }}
+                placeholder='Enter your natural language query.....'
+                ></input>
+              <Button style={{height: '40px', width: '18%'}} buttonStyle="primary" onClick={update_sql_by_nl} >Try NL to SQL</Button>
+            </div>
+          )
+          }
+          
           <AceEditorWrapper
             autocomplete={autocompleteEnabled}
             onBlur={onSqlChanged}

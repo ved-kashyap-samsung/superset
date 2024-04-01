@@ -66,6 +66,9 @@ from superset.utils import core as utils
 from superset.views.base import CsvResponse, generate_download_headers, json_success
 from superset.views.base_api import BaseSupersetApi, requires_json, statsd_metrics
 
+from superset.llm_utils import create_prompt, graph_plot
+import requests
+
 config = app.config
 logger = logging.getLogger(__name__)
 
@@ -462,3 +465,102 @@ class SqlLabRestApi(BaseSupersetApi):
                 is_feature_enabled("SQLLAB_BACKEND_PERSISTENCE"),
             )
         return sql_json_executor
+    
+    @staticmethod
+    def _create_llm_schema(table_names, schema_names, schema_types):
+        schema = ""
+        for i in range(len(table_names)):
+            create_schema = create_prompt.create_table_schema(table_names[i], schema_names[i], schema_types[i])
+            schema += create_schema
+            schema += "\n\n"
+        return schema
+    
+    @expose("/nl_to_sql/", methods=("POST",))
+    @requires_json
+    def nl_to_sql(self) -> FlaskResponse:
+      nl_text = request.json['nl_text']
+      schema_names = request.json['schema_names']
+      schema_types = request.json['schema_types']
+      table_name = request.json['table_name']
+
+      prompt = create_prompt.create_prompt("NL TO SQL", query=nl_text, schema=self._create_llm_schema(table_name, schema_names, schema_types))
+
+      print("NL To SQL prompt :: ", prompt)
+      # llm_url = "http://gap-llm-ext-LB-multi-routing-1403106340.us-east-2.elb.amazonaws.com/generate"
+      llm_url = "http://107.99.237.104:8081/generate"
+      # llm_url = config.get("NL_TO_SQL_Endpoint")
+      print("LLM URL ", llm_url)
+      headers =  {"Content-Type": "application/json"}
+      obj = {
+          "inputs": prompt,
+          "parameters":{"max_new_tokens":200}
+      }
+
+      llm_response = requests.post(llm_url, json = obj, headers=headers).json()["generated_text"]
+      return json_success(
+          json.dumps(
+              {"result": llm_response}
+          ),
+          200,
+      )
+    
+    @staticmethod
+    def __create_response_data(top_rows):
+        response_data = "We get following response : \n\n"
+        for index in range(len(top_rows)):
+            row = top_rows[index]
+            response_data += (str(index+1) + ") " +str(row) + "\n\n")
+        return response_data
+    
+    @staticmethod
+    def __prepare_data(top_rows):
+        keys = top_rows[0].keys()
+        data = [[row[key] for row in top_rows] for key in keys]
+        return data
+    
+    @expose("/llm_summarize/", methods=("POST",))
+    @requires_json
+    def llm_summarize(self) -> FlaskResponse:
+      nl_text = request.json['nl_text']
+      sql_query = request.json['sql_query']
+      headers = request.json['headers']
+      top_rows = request.json['top_rows']
+      prompt = create_prompt.create_prompt("SQL_DATA_SUMMARIZE", query=nl_text, sql=sql_query, data=self.__create_response_data(top_rows))
+      data = self.__prepare_data(top_rows)
+      print("Summarize prompt :: ", prompt)
+
+      import datetime
+      url = "https://gap-front-k8s.gap-srib.com/gap/v2/txt/txt"
+      headers = {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer lzja0obfqirs3j0zizsjvpo6lbzkegyk"
+      }
+      payload = {
+          "app_id": "A7BU0Dw0Ab5=",
+          "task_id": "",
+          "prompt": "",
+          "preferred_model": "mistral-7b-v0.1"
+      }
+      payload['prompt'] = prompt
+      payload['task_id'] = str(int(datetime.datetime.now().timestamp()*1000))
+      r = requests.post(url, data=json.dumps(payload), headers=headers, verify=False)
+      data = r.json()
+      llm_response = data["model_response"][0]
+
+      # llm_url = "http://gap-llm-ext-LB-multi-routing-1403106340.us-east-2.elb.amazonaws.com/generate"
+      # # llm_url = "http://107.99.237.104:8081/generate"
+      # headers =  {"Content-Type": "application/json"}
+      # obj = {
+      #     "inputs": prompt,
+      #     "parameters":{"max_new_tokens":200}
+      # }
+      # llm_response = requests.post(llm_url, json = obj, headers=headers).json()["generated_text"]
+
+
+      return json_success(
+          json.dumps(
+              {"result": llm_response}
+          ),
+          200,
+      )
+    

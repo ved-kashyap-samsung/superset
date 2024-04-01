@@ -347,6 +347,7 @@ export function runQuery(query) {
     })
       .then(({ json }) => {
         if (!query.runAsync) {
+          json["nl_text"] = query.nltext
           dispatch(querySuccess(query, json));
         }
       })
@@ -373,6 +374,7 @@ export function runQueryFromSqlEditor(
   tempTable,
   ctas,
   ctasMethod,
+  nltext
 ) {
   return function (dispatch, getState) {
     const qe = getUpToDateQuery(getState(), queryEditor, queryEditor.id);
@@ -389,6 +391,7 @@ export function runQueryFromSqlEditor(
       ctas,
       ctas_method: ctasMethod,
       updateTabState: !qe.selectedText,
+      nltext: nltext
     };
     dispatch(runQuery(query));
   };
@@ -743,18 +746,15 @@ export function removeQueryEditor(queryEditor) {
 
     return sync
       .then(() => dispatch({ type: REMOVE_QUERY_EDITOR, queryEditor }))
-      .catch(({ status }) => {
-        if (status !== 404) {
-          return dispatch(
-            addDangerToast(
-              t(
-                'An error occurred while removing tab. Please contact your administrator.',
-              ),
+      .catch(() =>
+        dispatch(
+          addDangerToast(
+            t(
+              'An error occurred while removing tab. Please contact your administrator.',
             ),
-          );
-        }
-        return dispatch({ type: REMOVE_QUERY_EDITOR, queryEditor });
-      });
+          ),
+        ),
+      );
   };
 }
 
@@ -1320,3 +1320,43 @@ export function createCtasDatasource(vizOptions) {
       });
   };
 }
+
+export function nl_to_sql(nltext, table_name, names, types) {
+  return SupersetClient.post({
+      endpoint: `/api/v1/sqllab/nl_to_sql/`,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nl_text: nltext,
+        schema_names: names,
+        schema_types: types,
+        table_name: table_name,
+      }),
+    }).then(({ json }) => {
+      const result = json.result;
+      return result
+      })
+    .catch((error) => {
+      const errorMsg = t('An error occurred while converting to sql, Error' + error);
+      return Promise.reject(new Error(errorMsg));
+    });
+};
+
+export function llm_summarize(nl_text, sql_query, headers, top_rows) {
+  return SupersetClient.post({
+      endpoint: `/api/v1/sqllab/llm_summarize/`,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nl_text: nl_text,
+        sql_query: sql_query,
+        headers: headers,
+        top_rows: top_rows,
+      }),
+    }).then(({ json }) => {
+      const result = json.result;
+      return result
+      })
+    .catch((error) => {
+      const errorMsg = t('An error occurred while getting summary, Error' + error);
+      return Promise.reject(new Error(errorMsg));
+    });
+};
