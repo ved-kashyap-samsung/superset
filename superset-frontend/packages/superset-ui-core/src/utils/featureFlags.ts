@@ -56,6 +56,7 @@ export enum FeatureFlag {
   TaggingSystem = 'TAGGING_SYSTEM',
   Thumbnails = 'THUMBNAILS',
   UseAnalagousColors = 'USE_ANALAGOUS_COLORS',
+  Superset_llm_enable = "SUPERSET_LLM_ENABLE"
 }
 
 export type ScheduleQueriesProps = {
