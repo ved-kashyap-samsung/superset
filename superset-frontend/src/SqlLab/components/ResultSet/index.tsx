@@ -25,6 +25,8 @@ import Alert from 'src/components/Alert';
 import Button from 'src/components/Button';
 import shortid from 'shortid';
 import {
+  FeatureFlag,
+  isFeatureEnabled,
   QueryState,
   styled,
   t,
@@ -60,6 +62,7 @@ import {
   fetchQueryResults,
   reFetchQueryResults,
   reRunQuery,
+  llm_summarize,
 } from 'src/SqlLab/actions/sqlLab';
 import { URL_PARAMS } from 'src/constants';
 import Icons from 'src/components/Icons';
@@ -189,6 +192,10 @@ const ResultSet = ({
   const [cachedData, setCachedData] = useState<Record<string, unknown>[]>([]);
   const [showSaveDatasetModal, setShowSaveDatasetModal] = useState(false);
   const [alertIsOpen, setAlertIsOpen] = useState(false);
+  const [summarize_view, set_Summarize_view] = useState(false);
+  const [summarize_val, set_Summarize_val] = useState('');
+  const [summarize_tab, set_Summarize_tab] = useState('SUMMARIZE');
+  const enable_sql_llm = isFeatureEnabled(FeatureFlag.Superset_llm_enable)
 
   const history = useHistory();
   const dispatch = useDispatch();
@@ -274,6 +281,19 @@ const ResultSet = ({
   const getExportCsvUrl = (clientId: string) =>
     `/api/v1/sqllab/export/${clientId}/`;
 
+  const summarize_data = async () => {
+    set_Summarize_view(!summarize_view)
+    if(summarize_tab === 'SUMMARIZE') set_Summarize_tab('DATA')
+    else set_Summarize_tab('SUMMARIZE')
+    const result = query.results
+    const nl_text = result['nl_text']
+    const sql_query = result['query']['sql']
+    const headers = result['columns'].map((header)=>{return header['name']})
+    const top_rows = result['data'].slice(0, 5)
+    const summary = await llm_summarize(nl_text, sql_query, headers, top_rows)
+    set_Summarize_val(summary)
+  }
+
   const renderControls = () => {
     if (search || visualize || csv) {
       let { data } = query.results;
@@ -327,6 +347,11 @@ const ResultSet = ({
               }
               hideTooltip
             />
+            {isFeatureEnabled(FeatureFlag.Superset_llm_enable) && (
+              <Button onClick={summarize_data}>
+                {summarize_tab}
+              </Button>
+            )}
           </ResultSetButtons>
           {search && (
             <input
@@ -619,14 +644,20 @@ const ResultSet = ({
               {sql}
             </>
           )}
-          <ResultTable
-            data={data}
-            queryId={query.id}
-            orderedColumnKeys={results.columns.map(col => col.column_name)}
-            height={rowsHeight}
-            filterText={searchText}
-            expandedColumns={expandedColumns}
-          />
+          {enable_sql_llm && (!summarize_view) && (
+              <ResultTable
+              data={data}
+              queryId={query.id}
+              orderedColumnKeys={results.columns.map(col => col.column_name)}
+              height={rowsHeight}
+              filterText={searchText}
+              expandedColumns={expandedColumns}
+            />
+          )}
+          
+          {summarize_view && (
+            <div>{summarize_val}</div>
+          )}
         </ResultContainer>
       );
     }
