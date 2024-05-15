@@ -56,7 +56,9 @@ import Button from 'src/components/Button';
 import Timer from 'src/components/Timer';
 import ResizableSidebar from 'src/components/ResizableSidebar';
 import { AntdDropdown, AntdSwitch, Skeleton } from 'src/components';
-import { Input } from 'src/components/Input';
+import { Input, InputNumber } from 'src/components/Input';
+import { Row, Col } from 'src/components';
+import Slider from 'src/components/Slider';
 import { Menu } from 'src/components/Menu';
 import Icons from 'src/components/Icons';
 import { detectOS } from 'src/utils/common';
@@ -246,7 +248,37 @@ const SqlEditor: React.FC<Props> = ({
 }) => {
   const theme = useTheme();
   const dispatch = useDispatch();
-  const enable_sql_llm = isFeatureEnabled(FeatureFlag.Superset_llm_enable)
+  const enable_sql_llm = isFeatureEnabled(FeatureFlag.Superset_llm_enable);
+
+  const [temperature, setTemperature] = useState(0.9);
+  const handleTemperatureChange = newValue => {
+    setTemperature(newValue as number);
+  };
+
+  const [maxTokens, setMaxTokens] = useState(500);
+  const handleMaxTokensChange = newValue => {
+    setMaxTokens(newValue as number);
+  };
+
+  const [topK, setTopK] = useState(40);
+  const handleTopKChange = newValue => {
+    setTopK(newValue as number);
+  };
+
+  const [topP, setTopP] = useState(0.8);
+  const handleTopPChange = newValue => {
+    setTopP(newValue as number);
+  };
+
+  const [typicalP, setTypicalP] = useState(0.9);
+  const handleTypicalPChange = newValue => {
+    setTypicalP(newValue as number);
+  };
+
+  const [repetitionPenalty, setRepetitionPenalty] = useState(1.18);
+  const handleRepetitionPenaltyChange = newValue => {
+    setRepetitionPenalty(newValue as number);
+  };
 
   const { database, latestQuery, hideLeftBar, currentQueryEditorId } =
     useSelector<
@@ -288,6 +320,8 @@ const SqlEditor: React.FC<Props> = ({
     getItem(LocalStorageKeys.SqllabIsAutocompleteEnabled, true),
   );
   const [showCreateAsModal, setShowCreateAsModal] = useState(false);
+  const [showLLMConfigurationModal, setshowLLMConfigurationModal] =
+    useState(false);
   const [createAs, setCreateAs] = useState('');
   const [showEmptyState, setShowEmptyState] = useState(false);
 
@@ -301,8 +335,9 @@ const SqlEditor: React.FC<Props> = ({
       if (!database) {
         return;
       }
-      var nltext = ''
-      if(enable_sql_llm) nltext = (document.getElementById("nlsql") as HTMLInputElement).value
+      var nltext = '';
+      if (enable_sql_llm)
+        nltext = (document.getElementById('nlsql') as HTMLInputElement).value;
 
       dispatch(
         runQueryFromSqlEditor(
@@ -786,39 +821,41 @@ const SqlEditor: React.FC<Props> = ({
   const queryPane = () => {
     const { aceEditorHeight, southPaneHeight } =
       getAceEditorAndSouthPaneHeights(height, northPercent, southPercent);
-    
+
     const tables = useSelector<SqlLabRootState, Table[]>(
       ({ sqlLab }) =>
         sqlLab.tables.filter(table => table.queryEditorId === queryEditor.id),
       shallowEqual,
     );
-    
+
     const update_sql_by_nl = async () => {
+      const inputElement = document.getElementById('nlsql') as HTMLInputElement;
 
-      const inputElement = document.getElementById("nlsql") as HTMLInputElement;
-
-      let columns = []
-      let table_names = []
-      console.log(tables)
-      for(let i=0; i<tables.length; i++){
-        if(tables[i]['persistData']!==null && tables[i]['persistData']['columns']!==null){
-          columns.push(tables[i]['persistData']['columns'])
-          table_names.push(tables[i]['name'])
+      let columns = [];
+      let table_names = [];
+      console.log(tables);
+      for (let i = 0; i < tables.length; i++) {
+        if (
+          tables[i]['persistData'] !== null &&
+          tables[i]['persistData']['columns'] !== null
+        ) {
+          columns.push(tables[i]['persistData']['columns']);
+          table_names.push(tables[i]['name']);
         }
       }
 
-      var names = []
-      var types = []
+      var names = [];
+      var types = [];
 
-      for(let i=0; i<columns.length; i++){
-        let name = []
-        let type = []
-        for(let j=0; j<columns[i].length; j++){
-          name.push(columns[i][j]['name'])
-          type.push(columns[i][j]['type'])
+      for (let i = 0; i < columns.length; i++) {
+        let name = [];
+        let type = [];
+        for (let j = 0; j < columns[i].length; j++) {
+          name.push(columns[i][j]['name']);
+          type.push(columns[i][j]['type']);
         }
-        names.push(name)
-        types.push(type)
+        names.push(name);
+        types.push(type);
       }
       // let columns
       // if(tables[0]!=null && tables[0]['persistData']!==null && tables[0]['persistData']['columns']!==null){
@@ -831,9 +868,14 @@ const SqlEditor: React.FC<Props> = ({
       //   types.push(columns[i]['type'])
       // }
 
-      const sql_value = await nl_to_sql(inputElement.value, table_names, names, types)
-      onSqlChanged(sql_value)
-    }
+      const sql_value = await nl_to_sql(
+        inputElement.value,
+        table_names,
+        names,
+        types,
+      );
+      onSqlChanged(sql_value);
+    };
 
     return (
       <Split
@@ -859,24 +901,246 @@ const SqlEditor: React.FC<Props> = ({
           )}
 
           {enable_sql_llm && (
-            <div>
-              <input id="nlsql" style={{
-                width: '80%',
-                height: '38px',
-                border: 'solid 1px',
-                borderRadius: '3px',
-                borderColor: 'grey',
-                marginRight: '2%',
-                marginBottom: '10px',
-                padding: '10px'
+            <div style={{ marginBottom: '10px' }}>
+              <Input
+                id="nlsql"
+                placeholder="Enter your natural language query..."
+              />
+
+              <Button
+                style={{
+                  width: '150px',
+                  marginTop: '10px',
                 }}
-                placeholder='Enter your natural language query.....'
-                ></input>
-              <Button style={{height: '40px', width: '18%'}} buttonStyle="primary" onClick={update_sql_by_nl} >Try NL to SQL</Button>
+                buttonStyle="primary"
+                onClick={() => {
+                  setshowLLMConfigurationModal(true);
+                }}
+              >
+                CONFIGURE
+                <Icons.Gear
+                  style={{
+                    fontSize: '15px',
+                  }}
+                  name="gear"
+                  iconColor={theme.colors.grayscale.light5}
+                  data-test="filterbar-orientation-icon"
+                />
+              </Button>
+
+              <Button
+                style={{
+                  width: '150px',
+                  marginTop: '10px',
+                }}
+                buttonStyle="primary"
+                onClick={update_sql_by_nl}
+              >
+                Generate SQL
+              </Button>
+
+              <Modal
+                show={showLLMConfigurationModal}
+                title={'LLM Configurations'}
+                onHide={() => setshowLLMConfigurationModal(false)}
+                footer={
+                  <>
+                    <Button onClick={() => setshowLLMConfigurationModal(false)}>
+                      CANCEL
+                    </Button>
+                    <Button
+                      buttonStyle="primary"
+                      disabled={false}
+                      onClick={() => setshowLLMConfigurationModal(false)}
+                    >
+                      SAVE
+                    </Button>
+                  </>
+                }
+                onHandledPrimaryAction={() =>
+                  setshowLLMConfigurationModal(false)
+                }
+              >
+                <div style={{ fontSize: '14px', color: 'grey' }}>
+                  <div id="endpoint" style={{ marginBottom: '20px' }}>
+                    <span>{'Endpoint'}</span>
+                    <Input placeholder={'Enter endpoint'} />
+                  </div>
+                  <div id="temperature" style={{ marginBottom: '10px' }}>
+                    <span>{'Temperature'}</span>
+                    {/* <Input placeholder={'Enter Temperature'} /> */}
+                    <Row>
+                      <Col span={19}>
+                        <Slider
+                          step={0.01}
+                          min={0.1}
+                          max={2.0}
+                          onChange={handleTemperatureChange}
+                          value={
+                            typeof temperature === 'number' ? temperature : 0
+                          }
+                        />
+                      </Col>
+                      <Col span={4}>
+                        <InputNumber
+                          step={0.01}
+                          min={0.1}
+                          max={2.0}
+                          value={temperature}
+                          onChange={handleTemperatureChange}
+                          style={{
+                            marginLeft: '25px',
+                          }}
+                        />
+                      </Col>
+                    </Row>
+                  </div>
+
+                  <div id="max_tokens" style={{ marginBottom: '10px' }}>
+                    <span>{'Max Tokens'}</span>
+                    {/* <Input placeholder={'Enter Max Tokens'} /> */}
+                    <Row>
+                      <Col span={19}>
+                        <Slider
+                          step={1}
+                          min={50}
+                          max={4000}
+                          onChange={handleMaxTokensChange}
+                          value={typeof maxTokens === 'number' ? maxTokens : 0}
+                        />
+                      </Col>
+                      <Col span={4}>
+                        <InputNumber
+                          step={1}
+                          min={50}
+                          max={4000}
+                          style={{
+                            marginLeft: '25px',
+                          }}
+                          value={maxTokens}
+                          onChange={handleMaxTokensChange}
+                        />
+                      </Col>
+                    </Row>
+                  </div>
+                  <div id="top_k" style={{ marginBottom: '10px' }}>
+                    <span>{'Top K'}</span>
+                    {/* <Input placeholder={'Enter Top K'} /> */}
+                    <Row>
+                      <Col span={19}>
+                        <Slider
+                          step={1}
+                          min={1}
+                          max={200}
+                          onChange={handleTopKChange}
+                          value={typeof topK === 'number' ? topK : 0}
+                        />
+                      </Col>
+                      <Col span={4}>
+                        <InputNumber
+                          min={1}
+                          max={200}
+                          style={{
+                            marginLeft: '25px',
+                          }}
+                          step={1}
+                          value={topK}
+                          onChange={handleTopKChange}
+                        />
+                      </Col>
+                    </Row>
+                  </div>
+                  <div id="top_p" style={{ marginBottom: '10px' }}>
+                    <span>{'Top P'}</span>
+                    {/* <Input placeholder={'Enter Top P'} /> */}
+                    <Row>
+                      <Col span={19}>
+                        <Slider
+                          step={0.01}
+                          min={0.01}
+                          max={0.99}
+                          onChange={handleTopPChange}
+                          value={typeof topP === 'number' ? topP : 0}
+                        />
+                      </Col>
+                      <Col span={4}>
+                        <InputNumber
+                          min={0.01}
+                          max={0.99}
+                          style={{
+                            marginLeft: '25px',
+                          }}
+                          step={0.01}
+                          value={topP}
+                          onChange={handleTopPChange}
+                        />
+                      </Col>
+                    </Row>
+                  </div>
+                  <div id="typical_p" style={{ marginBottom: '10px' }}>
+                    <span>{'Typical P'}</span>
+                    {/* <Input placeholder={'Enter Typical P'} /> */}
+                    <Row>
+                      <Col span={19}>
+                        <Slider
+                          step={0.01}
+                          min={0.01}
+                          max={0.99}
+                          defaultValue={0.9}
+                          onChange={handleTypicalPChange}
+                          value={typeof typicalP === 'number' ? typicalP : 0}
+                        />
+                      </Col>
+                      <Col span={4}>
+                        <InputNumber
+                          min={0.01}
+                          max={0.99}
+                          style={{
+                            marginLeft: '25px',
+                          }}
+                          step={0.01}
+                          value={typicalP}
+                          onChange={handleTypicalPChange}
+                        />
+                      </Col>
+                    </Row>
+                  </div>
+                  <div id="repetition_penalty" style={{ marginBottom: '10px' }}>
+                    <span>{'Repetition Penalty'}</span>
+                    {/* <Input placeholder={'Enter Repetition Penalty'} /> */}
+                    <Row>
+                      <Col span={19}>
+                        <Slider
+                          step={0.1}
+                          min={0.1}
+                          max={50}
+                          onChange={handleRepetitionPenaltyChange}
+                          value={
+                            typeof repetitionPenalty === 'number'
+                              ? repetitionPenalty
+                              : 0
+                          }
+                        />
+                      </Col>
+                      <Col span={4}>
+                        <InputNumber
+                          min={0.1}
+                          max={50}
+                          style={{
+                            marginLeft: '25px',
+                          }}
+                          step={0.1}
+                          value={repetitionPenalty}
+                          onChange={handleRepetitionPenaltyChange}
+                        />
+                      </Col>
+                    </Row>
+                  </div>
+                </div>
+              </Modal>
             </div>
-          )
-          }
-          
+          )}
+
           <AceEditorWrapper
             autocomplete={autocompleteEnabled}
             onBlur={onSqlChanged}
