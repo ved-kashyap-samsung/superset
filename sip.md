@@ -1,14 +1,6 @@
-## [SIP] Proposal for natural language query to SQL conversion and data summarization using LLM 
+## [SIP] Proposal for data summarization using LLM 
 
 ### Motivation
-
-#### Converting natural language commands to SQL queries can enhance user experience and accessibility by:
-
-- **Simplicity**: Users can interact with databases using everyday language, reducing the learning curve for querying databases.
-- **Efficiency**: Natural language commands can be faster to input and understand compared to writing complex SQL queries, especially for non-technical users. 
-- **Accessibility**: It allows a wider range of users, including those without SQL proficiency, to access and utilize databases effectively.
-- **Flexibility**: Natural language understanding can handle variations in how users express queries, providing a more flexible interface.
-- **Productivity**: Streamlining the query process frees up time for users to focus on analyzing and interpreting the data rather than wrestling with query syntax.
 
 #### Summarizing SQL returned data using Language Models (LLMs) adds further value by:
 
