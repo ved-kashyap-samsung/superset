@@ -12,20 +12,21 @@
 
 ### Proposed Change
 
-Describe how the feature will be implemented, or the problem will be solved. If possible, include mocks, screenshots, or screencasts (even if from different tools).
+A sample screenshot for how the feature will be implemented.
+![summarization](https://github.com/ved-kashyap-samsung/superset/assets/34643160/516bc809-17c6-4e31-b08f-8c2c2c911160)
 
 ### New or Changed Public Interfaces
 
-Describe any new additions to the model, views or `REST` endpoints. Describe any changes to existing visualizations, dashboards and React components. Describe changes that affect the Superset CLI and how Superset is deployed.
+NA
 
 ### New dependencies
 
-Describe any `npm`/`PyPI` packages that are required. Are they actively maintained? What are their licenses?
+NA
 
 ### Migration Plan and Compatibility
 
-Describe any database migrations that are necessary, or updates to stored URLs.
+NA
 
 ### Rejected Alternatives
 
-Describe alternative approaches that were considered and rejected.
+NA
