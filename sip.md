@@ -13,6 +13,7 @@
 ### Proposed Change
 
 A sample screenshot for how the feature will be implemented.
+
 ![summarization](https://github.com/ved-kashyap-samsung/superset/assets/34643160/516bc809-17c6-4e31-b08f-8c2c2c911160)
 
 ### New or Changed Public Interfaces
